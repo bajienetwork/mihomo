@@ -64,7 +64,8 @@ func (p proxyDialer) DialContext(ctx context.Context, network, address string) (
 		return nil, err
 	}
 	if p.statistic {
-		conn = statistic.NewTCPTracker(conn, statistic.DefaultManager, currentMeta, nil, 0, 0, false)
+		ms := statistic.GetManagers(conn.Chains())
+		conn = statistic.NewTCPTracker(conn, ms, currentMeta, nil, 0, 0, false)
 	}
 	return conn, err
 }
@@ -87,7 +88,8 @@ func (p proxyDialer) listenPacket(ctx context.Context, currentMeta *C.Metadata) 
 		return nil, err
 	}
 	if p.statistic {
-		pc = statistic.NewUDPTracker(pc, statistic.DefaultManager, currentMeta, nil, 0, 0, false)
+		ms := statistic.GetManagers(pc.Chains())
+		pc = statistic.NewUDPTracker(pc, ms, currentMeta, nil, 0, 0, false)
 	}
 	return pc, nil
 }
