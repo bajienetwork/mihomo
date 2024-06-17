@@ -411,7 +411,7 @@ func handleUDPConn(packet C.PacketAdapter) {
 		}
 		logMetadata(metadata, rule, rawPc)
 
-		pc := statistic.NewUDPTracker(rawPc, statistic.DefaultManager, metadata, rule, 0, 0, true)
+		pc := statistic.NewUDPTracker(rawPc, statistic.GetManagers(rawPc.Chains()), metadata, rule, 0, 0, true)
 
 		if rawPc.Chains().Last() == "REJECT-DROP" {
 			pc.Close()
@@ -539,7 +539,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 	}
 	logMetadata(metadata, rule, remoteConn)
 
-	remoteConn = statistic.NewTCPTracker(remoteConn, statistic.DefaultManager, metadata, rule, 0, int64(peekLen), true)
+	remoteConn = statistic.NewTCPTracker(remoteConn, statistic.GetManagers(remoteConn.Chains()), metadata, rule, 0, int64(peekLen), true)
 	defer func(remoteConn C.Conn) {
 		_ = remoteConn.Close()
 	}(remoteConn)

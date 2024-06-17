@@ -82,6 +82,10 @@ func (c Chain) Last() string {
 	}
 }
 
+func (c Chain) First() string {
+	return c[len(c)-1]
+}
+
 type Conn interface {
 	N.ExtendedConn
 	Connection

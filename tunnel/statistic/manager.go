@@ -1,6 +1,7 @@
 package statistic
 
 import (
+	"github.com/metacubex/mihomo/constant"
 	"os"
 	"time"
 
@@ -11,6 +12,9 @@ import (
 )
 
 var DefaultManager *Manager
+var ProxyManager *Manager
+var DirectManager *Manager
+var RejectManager *Manager
 
 func init() {
 	DefaultManager = &Manager{
@@ -24,7 +28,43 @@ func init() {
 		process:       &process.Process{Pid: int32(os.Getpid())},
 	}
 
+	ProxyManager = &Manager{
+		connections:   xsync.NewMapOf[string, Tracker](),
+		uploadTemp:    atomic.NewInt64(0),
+		downloadTemp:  atomic.NewInt64(0),
+		uploadBlip:    atomic.NewInt64(0),
+		downloadBlip:  atomic.NewInt64(0),
+		uploadTotal:   atomic.NewInt64(0),
+		downloadTotal: atomic.NewInt64(0),
+		process:       &process.Process{Pid: int32(os.Getpid())},
+	}
+
+	DirectManager = &Manager{
+		connections:   xsync.NewMapOf[string, Tracker](),
+		uploadTemp:    atomic.NewInt64(0),
+		downloadTemp:  atomic.NewInt64(0),
+		uploadBlip:    atomic.NewInt64(0),
+		downloadBlip:  atomic.NewInt64(0),
+		uploadTotal:   atomic.NewInt64(0),
+		downloadTotal: atomic.NewInt64(0),
+		process:       &process.Process{Pid: int32(os.Getpid())},
+	}
+
+	RejectManager = &Manager{
+		connections:   xsync.NewMapOf[string, Tracker](),
+		uploadTemp:    atomic.NewInt64(0),
+		downloadTemp:  atomic.NewInt64(0),
+		uploadBlip:    atomic.NewInt64(0),
+		downloadBlip:  atomic.NewInt64(0),
+		uploadTotal:   atomic.NewInt64(0),
+		downloadTotal: atomic.NewInt64(0),
+		process:       &process.Process{Pid: int32(os.Getpid())},
+	}
+
 	go DefaultManager.handle()
+	go ProxyManager.handle()
+	go DirectManager.handle()
+	go RejectManager.handle()
 }
 
 type Manager struct {
@@ -38,6 +78,8 @@ type Manager struct {
 	process       *process.Process
 	memory        uint64
 }
+
+type Managers []*Manager
 
 func (m *Manager) Join(c Tracker) {
 	m.connections.Store(c.ID(), c)
@@ -126,4 +168,41 @@ type Snapshot struct {
 	UploadTotal   int64          `json:"uploadTotal"`
 	Connections   []*TrackerInfo `json:"connections"`
 	Memory        uint64         `json:"memory"`
+}
+
+func (m *Managers) Join(c Tracker) {
+	for _, m := range *m {
+		m.connections.Store(c.ID(), c)
+	}
+}
+
+func (m *Managers) Leave(c Tracker) {
+	for _, m := range *m {
+		m.connections.Delete(c.ID())
+	}
+}
+func (m *Managers) PushUploaded(size int64) {
+	for _, m := range *m {
+		m.uploadTemp.Add(size)
+		m.uploadTotal.Add(size)
+	}
+}
+
+func (m *Managers) PushDownloaded(size int64) {
+	for _, m := range *m {
+		m.downloadTemp.Add(size)
+		m.downloadTotal.Add(size)
+	}
+}
+
+func GetManagers(c constant.Chain) *Managers {
+	switch c.First() {
+	case "PROXY":
+		return &Managers{DefaultManager, ProxyManager}
+	case "REJECT":
+		return &Managers{DefaultManager, RejectManager}
+	case "DIRECT":
+		return &Managers{DefaultManager, DirectManager}
+	}
+	return &Managers{DefaultManager}
 }

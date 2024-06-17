@@ -36,7 +36,7 @@ type TrackerInfo struct {
 type tcpTracker struct {
 	C.Conn `json:"-"`
 	*TrackerInfo
-	manager *Manager
+	managers *Managers
 
 	pushToManager bool `json:"-"`
 }
@@ -53,7 +53,7 @@ func (tt *tcpTracker) Read(b []byte) (int, error) {
 	n, err := tt.Conn.Read(b)
 	download := int64(n)
 	if tt.pushToManager {
-		tt.manager.PushDownloaded(download)
+		tt.managers.PushDownloaded(download)
 	}
 	tt.DownloadTotal.Add(download)
 	return n, err
@@ -63,7 +63,7 @@ func (tt *tcpTracker) ReadBuffer(buffer *buf.Buffer) (err error) {
 	err = tt.Conn.ReadBuffer(buffer)
 	download := int64(buffer.Len())
 	if tt.pushToManager {
-		tt.manager.PushDownloaded(download)
+		tt.managers.PushDownloaded(download)
 	}
 	tt.DownloadTotal.Add(download)
 	return
@@ -72,7 +72,7 @@ func (tt *tcpTracker) ReadBuffer(buffer *buf.Buffer) (err error) {
 func (tt *tcpTracker) UnwrapReader() (io.Reader, []N.CountFunc) {
 	return tt.Conn, []N.CountFunc{func(download int64) {
 		if tt.pushToManager {
-			tt.manager.PushDownloaded(download)
+			tt.managers.PushDownloaded(download)
 		}
 		tt.DownloadTotal.Add(download)
 	}}
@@ -82,7 +82,7 @@ func (tt *tcpTracker) Write(b []byte) (int, error) {
 	n, err := tt.Conn.Write(b)
 	upload := int64(n)
 	if tt.pushToManager {
-		tt.manager.PushUploaded(upload)
+		tt.managers.PushUploaded(upload)
 	}
 	tt.UploadTotal.Add(upload)
 	return n, err
@@ -92,7 +92,7 @@ func (tt *tcpTracker) WriteBuffer(buffer *buf.Buffer) (err error) {
 	upload := int64(buffer.Len())
 	err = tt.Conn.WriteBuffer(buffer)
 	if tt.pushToManager {
-		tt.manager.PushUploaded(upload)
+		tt.managers.PushUploaded(upload)
 	}
 	tt.UploadTotal.Add(upload)
 	return
@@ -101,14 +101,14 @@ func (tt *tcpTracker) WriteBuffer(buffer *buf.Buffer) (err error) {
 func (tt *tcpTracker) UnwrapWriter() (io.Writer, []N.CountFunc) {
 	return tt.Conn, []N.CountFunc{func(upload int64) {
 		if tt.pushToManager {
-			tt.manager.PushUploaded(upload)
+			tt.managers.PushUploaded(upload)
 		}
 		tt.UploadTotal.Add(upload)
 	}}
 }
 
 func (tt *tcpTracker) Close() error {
-	tt.manager.Leave(tt)
+	tt.managers.Leave(tt)
 	return tt.Conn.Close()
 }
 
@@ -131,14 +131,14 @@ func parseRemoteDestination(addr net.Addr, conn C.Connection) string {
 	}
 }
 
-func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64, pushToManager bool) *tcpTracker {
+func NewTCPTracker(conn C.Conn, managers *Managers, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64, pushToManager bool) *tcpTracker {
 	if conn != nil {
 		metadata.RemoteDst = parseRemoteDestination(conn.RemoteAddr(), conn)
 	}
 
 	t := &tcpTracker{
-		Conn:    conn,
-		manager: manager,
+		Conn:     conn,
+		managers: managers,
 		TrackerInfo: &TrackerInfo{
 			UUID:          utils.NewUUIDV4(),
 			Start:         time.Now(),
@@ -153,10 +153,10 @@ func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.R
 
 	if pushToManager {
 		if uploadTotal > 0 {
-			manager.PushUploaded(uploadTotal)
+			managers.PushUploaded(uploadTotal)
 		}
 		if downloadTotal > 0 {
-			manager.PushDownloaded(downloadTotal)
+			managers.PushDownloaded(downloadTotal)
 		}
 	}
 
@@ -165,14 +165,14 @@ func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.R
 		t.TrackerInfo.RulePayload = rule.Payload()
 	}
 
-	manager.Join(t)
+	managers.Join(t)
 	return t
 }
 
 type udpTracker struct {
 	C.PacketConn `json:"-"`
 	*TrackerInfo
-	manager *Manager
+	manager *Managers
 
 	pushToManager bool `json:"-"`
 }
@@ -224,7 +224,7 @@ func (ut *udpTracker) Upstream() any {
 	return ut.PacketConn
 }
 
-func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64, pushToManager bool) *udpTracker {
+func NewUDPTracker(conn C.PacketConn, manager *Managers, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64, pushToManager bool) *udpTracker {
 	metadata.RemoteDst = parseRemoteDestination(nil, conn)
 
 	ut := &udpTracker{
