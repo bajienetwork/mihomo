@@ -204,5 +204,5 @@ func GetManagers(c constant.Chain) *Managers {
 	case "DIRECT":
 		return &Managers{DefaultManager, DirectManager}
 	}
-	return &Managers{DefaultManager}
+	return &Managers{DefaultManager, ProxyManager}
 }
