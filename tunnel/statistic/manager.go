@@ -2,13 +2,12 @@ package statistic
 
 import (
 	"github.com/metacubex/mihomo/constant"
-	"os"
+	"github.com/metacubex/mihomo/headless"
 	"time"
 
 	"github.com/metacubex/mihomo/common/atomic"
 
 	"github.com/puzpuzpuz/xsync/v3"
-	"github.com/shirou/gopsutil/v3/process"
 )
 
 var DefaultManager *Manager
@@ -25,7 +24,6 @@ func init() {
 		downloadBlip:  atomic.NewInt64(0),
 		uploadTotal:   atomic.NewInt64(0),
 		downloadTotal: atomic.NewInt64(0),
-		process:       &process.Process{Pid: int32(os.Getpid())},
 	}
 
 	ProxyManager = &Manager{
@@ -36,7 +34,6 @@ func init() {
 		downloadBlip:  atomic.NewInt64(0),
 		uploadTotal:   atomic.NewInt64(0),
 		downloadTotal: atomic.NewInt64(0),
-		process:       &process.Process{Pid: int32(os.Getpid())},
 	}
 
 	DirectManager = &Manager{
@@ -47,7 +44,6 @@ func init() {
 		downloadBlip:  atomic.NewInt64(0),
 		uploadTotal:   atomic.NewInt64(0),
 		downloadTotal: atomic.NewInt64(0),
-		process:       &process.Process{Pid: int32(os.Getpid())},
 	}
 
 	RejectManager = &Manager{
@@ -58,7 +54,6 @@ func init() {
 		downloadBlip:  atomic.NewInt64(0),
 		uploadTotal:   atomic.NewInt64(0),
 		downloadTotal: atomic.NewInt64(0),
-		process:       &process.Process{Pid: int32(os.Getpid())},
 	}
 
 	go DefaultManager.handle()
@@ -75,8 +70,6 @@ type Manager struct {
 	downloadBlip  atomic.Int64
 	uploadTotal   atomic.Int64
 	downloadTotal atomic.Int64
-	process       *process.Process
-	memory        uint64
 }
 
 type Managers []*Manager
@@ -116,11 +109,6 @@ func (m *Manager) Now() (up int64, down int64) {
 	return m.uploadBlip.Load(), m.downloadBlip.Load()
 }
 
-func (m *Manager) Memory() uint64 {
-	m.updateMemory()
-	return m.memory
-}
-
 func (m *Manager) Snapshot() *Snapshot {
 	var connections []*TrackerInfo
 	m.Range(func(c Tracker) bool {
@@ -131,16 +119,7 @@ func (m *Manager) Snapshot() *Snapshot {
 		UploadTotal:   m.uploadTotal.Load(),
 		DownloadTotal: m.downloadTotal.Load(),
 		Connections:   connections,
-		Memory:        m.memory,
 	}
-}
-
-func (m *Manager) updateMemory() {
-	stat, err := m.process.MemoryInfo()
-	if err != nil {
-		return
-	}
-	m.memory = stat.RSS
 }
 
 func (m *Manager) ResetStatistic() {
@@ -155,11 +134,16 @@ func (m *Manager) ResetStatistic() {
 func (m *Manager) handle() {
 	ticker := time.NewTicker(time.Second)
 
-	for range ticker.C {
-		m.uploadBlip.Store(m.uploadTemp.Load())
-		m.uploadTemp.Store(0)
-		m.downloadBlip.Store(m.downloadTemp.Load())
-		m.downloadTemp.Store(0)
+	for {
+		select {
+		case <-ticker.C:
+			m.uploadBlip.Store(m.uploadTemp.Load())
+			m.uploadTemp.Store(0)
+			m.downloadBlip.Store(m.downloadTemp.Load())
+			m.downloadTemp.Store(0)
+		case <-headless.Register():
+			return
+		}
 	}
 }
 

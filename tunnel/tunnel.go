@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/metacubex/mihomo/headless"
 	"net"
 	"net/netip"
 	"path/filepath"
@@ -222,8 +223,16 @@ func isHandle(t C.Type) bool {
 // processUDP starts a loop to handle udp packet
 func processUDP() {
 	queue := udpQueue
-	for conn := range queue {
-		handleUDPConn(conn)
+	for {
+		select {
+		case conn, open := <-queue:
+			handleUDPConn(conn)
+			if !open {
+				return
+			}
+		case <-headless.Register():
+			return
+		}
 	}
 }
 
@@ -237,8 +246,16 @@ func process() {
 	}
 
 	queue := tcpQueue
-	for conn := range queue {
-		go handleTCPConn(conn)
+	for {
+		select {
+		case conn, open := <-queue:
+			go handleTCPConn(conn)
+			if !open {
+				return
+			}
+		case <-headless.Register():
+			return
+		}
 	}
 }
 

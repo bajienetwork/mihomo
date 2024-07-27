@@ -2,6 +2,7 @@ package observable
 
 import (
 	"errors"
+	"github.com/metacubex/mihomo/headless"
 	"sync"
 )
 
@@ -13,14 +14,22 @@ type Observable[T any] struct {
 }
 
 func (o *Observable[T]) process() {
-	for item := range o.iterable {
-		o.mux.Lock()
-		for _, sub := range o.listener {
-			sub.Emit(item)
+	for {
+		select {
+		case item, open := <-o.iterable:
+			o.mux.Lock()
+			for _, sub := range o.listener {
+				sub.Emit(item)
+			}
+			o.mux.Unlock()
+			if !open {
+				o.close()
+				break
+			}
+		case <-headless.Register():
+			return
 		}
-		o.mux.Unlock()
 	}
-	o.close()
 }
 
 func (o *Observable[T]) close() {

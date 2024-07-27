@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/metacubex/mihomo/headless"
 	"strings"
 	"sync"
 	"time"
@@ -62,6 +63,8 @@ func (hc *HealthCheck) process() {
 		case <-hc.done:
 			ticker.Stop()
 			hc.stop()
+			return
+		case <-headless.Register():
 			return
 		}
 	}
