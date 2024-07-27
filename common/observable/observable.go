@@ -24,7 +24,7 @@ func (o *Observable[T]) process() {
 			o.mux.Unlock()
 			if !open {
 				o.close()
-				break
+				return
 			}
 		case <-headless.Register():
 			return

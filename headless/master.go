@@ -1,10 +1,10 @@
 package headless
 
 var listeners []chan interface{}
-var on = false
+var On = false
 
 func TurnOn() {
-	on = true
+	On = true
 	for _, listener := range listeners {
 		listener <- struct{}{}
 	}

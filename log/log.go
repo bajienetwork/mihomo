@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"github.com/metacubex/mihomo/headless"
 	"os"
 
 	"github.com/metacubex/mihomo/common/observable"
@@ -36,25 +37,33 @@ func (e *Event) Type() string {
 
 func Infoln(format string, v ...any) {
 	event := newLog(INFO, format, v...)
-	logCh <- event
+	if !headless.On {
+		logCh <- event
+	}
 	print(event)
 }
 
 func Warnln(format string, v ...any) {
 	event := newLog(WARNING, format, v...)
-	logCh <- event
+	if !headless.On {
+		logCh <- event
+	}
 	print(event)
 }
 
 func Errorln(format string, v ...any) {
 	event := newLog(ERROR, format, v...)
-	logCh <- event
+	if !headless.On {
+		logCh <- event
+	}
 	print(event)
 }
 
 func Debugln(format string, v ...any) {
 	event := newLog(DEBUG, format, v...)
-	logCh <- event
+	if !headless.On {
+		logCh <- event
+	}
 	print(event)
 }
 
