@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"github.com/metacubex/mihomo/headless"
 	"net"
 	"net/netip"
 	"net/url"
@@ -550,72 +551,74 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config.Proxies = proxies
 	config.Providers = providers
 
-	listener, err := parseListeners(rawCfg)
-	if err != nil {
-		return nil, err
-	}
-	config.Listeners = listener
+	if !headless.On {
+		listener, err := parseListeners(rawCfg)
+		if err != nil {
+			return nil, err
+		}
+		config.Listeners = listener
 
-	log.Infoln("Geodata Loader mode: %s", geodata.LoaderName())
-	log.Infoln("Geosite Matcher implementation: %s", geodata.SiteMatcherName())
-	ruleProviders, err := parseRuleProviders(rawCfg)
-	if err != nil {
-		return nil, err
-	}
-	config.RuleProviders = ruleProviders
+		log.Infoln("Geodata Loader mode: %s", geodata.LoaderName())
+		log.Infoln("Geosite Matcher implementation: %s", geodata.SiteMatcherName())
+		ruleProviders, err := parseRuleProviders(rawCfg)
+		if err != nil {
+			return nil, err
+		}
+		config.RuleProviders = ruleProviders
 
-	subRules, err := parseSubRules(rawCfg, proxies)
-	if err != nil {
-		return nil, err
-	}
-	config.SubRules = subRules
+		subRules, err := parseSubRules(rawCfg, proxies)
+		if err != nil {
+			return nil, err
+		}
+		config.SubRules = subRules
 
-	rules, err := parseRules(rawCfg.Rule, proxies, subRules, "rules")
-	if err != nil {
-		return nil, err
-	}
-	config.Rules = rules
+		rules, err := parseRules(rawCfg.Rule, proxies, subRules, "rules")
+		if err != nil {
+			return nil, err
+		}
+		config.Rules = rules
 
-	hosts, err := parseHosts(rawCfg)
-	if err != nil {
-		return nil, err
-	}
-	config.Hosts = hosts
+		hosts, err := parseHosts(rawCfg)
+		if err != nil {
+			return nil, err
+		}
+		config.Hosts = hosts
 
-	ntpCfg := paresNTP(rawCfg)
-	config.NTP = ntpCfg
+		ntpCfg := paresNTP(rawCfg)
+		config.NTP = ntpCfg
 
-	dnsCfg, err := parseDNS(rawCfg, hosts, rules, ruleProviders)
-	if err != nil {
-		return nil, err
-	}
-	config.DNS = dnsCfg
+		dnsCfg, err := parseDNS(rawCfg, hosts, rules, ruleProviders)
+		if err != nil {
+			return nil, err
+		}
+		config.DNS = dnsCfg
 
-	err = parseTun(rawCfg.Tun, config.General)
-	if !features.CMFA && err != nil {
-		return nil, err
-	}
+		err = parseTun(rawCfg.Tun, config.General)
+		if !features.CMFA && err != nil {
+			return nil, err
+		}
 
-	err = parseTuicServer(rawCfg.TuicServer, config.General)
-	if err != nil {
-		return nil, err
-	}
+		err = parseTuicServer(rawCfg.TuicServer, config.General)
+		if err != nil {
+			return nil, err
+		}
 
-	config.Users = parseAuthentication(rawCfg.Authentication)
+		config.Users = parseAuthentication(rawCfg.Authentication)
 
-	config.Tunnels = rawCfg.Tunnels
-	// verify tunnels
-	for _, t := range config.Tunnels {
-		if len(t.Proxy) > 0 {
-			if _, ok := config.Proxies[t.Proxy]; !ok {
-				return nil, fmt.Errorf("tunnel proxy %s not found", t.Proxy)
+		config.Tunnels = rawCfg.Tunnels
+		// verify tunnels
+		for _, t := range config.Tunnels {
+			if len(t.Proxy) > 0 {
+				if _, ok := config.Proxies[t.Proxy]; !ok {
+					return nil, fmt.Errorf("tunnel proxy %s not found", t.Proxy)
+				}
 			}
 		}
-	}
 
-	config.Sniffer, err = parseSniffer(rawCfg.Sniffer)
-	if err != nil {
-		return nil, err
+		config.Sniffer, err = parseSniffer(rawCfg.Sniffer)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	elapsedTime := time.Since(startTime) / time.Millisecond                     // duration in ms
