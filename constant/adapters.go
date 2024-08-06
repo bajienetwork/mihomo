@@ -236,8 +236,6 @@ func (at AdapterType) String() string {
 
 func (at AdapterType) Priority() int {
 	switch at {
-	case Selector:
-		fallthrough
 	case Fallback:
 		fallthrough
 	case URLTest:
@@ -247,6 +245,8 @@ func (at AdapterType) Priority() int {
 	case Ssh:
 		return 0
 
+	case Selector:
+		fallthrough
 	case Shadowsocks:
 		fallthrough
 	case ShadowsocksR:
