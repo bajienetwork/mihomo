@@ -3,6 +3,7 @@ package outboundgroup
 import (
 	"context"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"strings"
 	"sync"
 	"time"
@@ -202,6 +203,10 @@ func (gb *GroupBase) GetProxies(touch bool) []C.Proxy {
 	if len(proxies) == 0 {
 		return append(proxies, tunnel.Proxies()["COMPATIBLE"])
 	}
+
+	slices.SortStableFunc(proxies, func(a, b C.Proxy) int {
+		return a.Type().Priority() - b.Type().Priority()
+	})
 
 	return proxies
 }
