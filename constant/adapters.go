@@ -234,6 +234,63 @@ func (at AdapterType) String() string {
 	}
 }
 
+func (at AdapterType) Priority() int {
+	switch at {
+	case Selector:
+		fallthrough
+	case Fallback:
+		fallthrough
+	case URLTest:
+		fallthrough
+	case LoadBalance:
+		fallthrough
+	case Ssh:
+		return 0
+
+	case Shadowsocks:
+		fallthrough
+	case ShadowsocksR:
+		fallthrough
+	case Snell:
+		fallthrough
+	case Socks5:
+		fallthrough
+	case Http:
+		fallthrough
+	case Vmess:
+		fallthrough
+	case Vless:
+		fallthrough
+	case Trojan:
+		fallthrough
+	case Hysteria:
+		fallthrough
+	case Hysteria2:
+		fallthrough
+	case WireGuard:
+		fallthrough
+	case Tuic:
+		return 1
+
+	case Direct:
+		fallthrough
+	case Reject:
+		fallthrough
+	case RejectDrop:
+		fallthrough
+	case Compatible:
+		fallthrough
+	case Pass:
+		fallthrough
+	case Dns:
+		fallthrough
+	case Relay:
+		return 2
+	default:
+		return 3
+	}
+}
+
 // UDPPacket contains the data of UDP packet, and offers control/info of UDP packet's source
 type UDPPacket interface {
 	// Data get the payload of UDP Packet
